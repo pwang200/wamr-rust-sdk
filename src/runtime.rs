@@ -111,10 +111,11 @@ impl RuntimeBuilder {
     pub fn register_host_function(
         mut self,
         function_name: &str,
-        function_ptr: *mut c_void,
+        function_ptr: *mut c_void, func_sig: &str, 
+        user_data: *mut c_void
     ) -> RuntimeBuilder {
         self.host_functions
-            .register_host_function(function_name, function_ptr);
+            .register_host_function(function_name, function_ptr, func_sig, user_data);
         self
     }
 

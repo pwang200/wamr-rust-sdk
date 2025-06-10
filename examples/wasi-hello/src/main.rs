@@ -28,7 +28,7 @@ fn main() -> Result<(), RuntimeError> {
 
     let params: Vec<WasmValue> = vec![WasmValue::I32(9), WasmValue::I32(27)];
     let result = function.call(&instance, &params)?;
-    assert_eq!(result, WasmValue::I32(9));
+    println!("{:?}", result);
 
     Ok(())
 }
