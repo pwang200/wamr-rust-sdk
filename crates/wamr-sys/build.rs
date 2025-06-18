@@ -8,6 +8,7 @@ extern crate cmake;
 
 use cmake::Config;
 use std::{env, path::Path, path::PathBuf};
+use std::process::Command;
 
 const _LLVM_LIBRARIES: &[&str] = &[
     // keep alphabet order
@@ -211,18 +212,32 @@ fn main() {
     println!("cargo:rerun-if-env-changed=CARGO_CFG_TARGET_OS");
     println!("cargo:rerun-if-env-changed=WAMR_BUILD_PLATFORM");
     println!("cargo:rerun-if-env-changed=WAMR_SHARED_PLATFORM_CONFIG");
-    // println!("cargo:rerun-if-env-changed=LLVM_LIB_CFG_PATH");
     println!("cargo:rerun-if-env-changed=WAMR_BH_VPRINTF");
+    println!("cargo:rerun-if-changed=build.rs");
+    println!("cargo:rerun-if-changed=wasm-micro-runtime"); // track submodule changes
 
-    let wamr_root = env::current_dir().unwrap();
-    let wamr_root = wamr_root.join("wasm-micro-runtime");
-    assert!(wamr_root.exists());
+    // Set up submodule path
+    let wamr_root = env::current_dir().unwrap().join("wasm-micro-runtime");
+
+    // Initialize/update submodule if needed
+    if !wamr_root.exists() || !wamr_root.join(".git").exists() {
+        let status = Command::new("git")
+            .args(["submodule", "update", "--init", "--recursive"])
+            .status()
+            .expect("Failed to run 'git submodule update --init --recursive'");
+        if !status.success() {
+            panic!("Submodule init failed: wasm-micro-runtime");
+        }
+    }
+
+    assert!(wamr_root.exists(), "Submodule wasm-micro-runtime is missing");
+
+    // let wamr_root = env::current_dir().unwrap();
+    // let wamr_root = wamr_root.join("wasm-micro-runtime");
+    // assert!(wamr_root.exists());
 
     if !check_is_espidf() {
-        // because the ESP-IDF build procedure differs from the regular one
-        // (build internally by esp-idf-sys),
         build_wamr_libraries(&wamr_root);
-        // build_wamrc(&wamr_root);
     }
 
     generate_bindings(&wamr_root);
