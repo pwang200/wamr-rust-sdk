@@ -4,8 +4,7 @@
  */
 
 /// This is a wrapper of a host defined(Rust) function.
-use std::ffi::{c_void, CString};
-use std::ptr;
+use std::ffi::{CString, c_void};
 
 use wamr_sys::NativeSymbol;
 
@@ -14,6 +13,7 @@ use wamr_sys::NativeSymbol;
 struct HostFunction {
     function_name: CString,
     function_ptr: *mut c_void,
+    function_sig: CString,
 }
 
 #[derive(Debug)]
@@ -33,15 +33,26 @@ impl HostFunctionList {
         }
     }
 
-    pub fn register_host_function(&mut self, function_name: &str, function_ptr: *mut c_void) {
+    pub fn register_host_function(
+        &mut self,
+        function_name: &str,
+        function_ptr: *mut c_void,
+        func_sig: &str,
+        user_data: *mut c_void,
+    ) {
         self.host_functions.push(HostFunction {
             function_name: CString::new(function_name).unwrap(),
             function_ptr,
+            function_sig: CString::new(func_sig).unwrap(),
         });
 
         let last = self.host_functions.last().unwrap();
-        self.native_symbols
-            .push(pack_host_function(&(last.function_name), function_ptr));
+        self.native_symbols.push(pack_host_function(
+            &(last.function_name),
+            function_ptr,
+            &(last.function_sig),
+            user_data,
+        ));
     }
 
     pub fn get_native_symbols(&mut self) -> &mut Vec<NativeSymbol> {
@@ -53,12 +64,17 @@ impl HostFunctionList {
     }
 }
 
-pub fn pack_host_function(function_name: &CString, function_ptr: *mut c_void) -> NativeSymbol {
+pub fn pack_host_function(
+    function_name: &CString,
+    function_ptr: *mut c_void,
+    function_sig: &CString,
+    user_data: *mut c_void,
+) -> NativeSymbol {
     NativeSymbol {
         symbol: function_name.as_ptr(),
         func_ptr: function_ptr,
-        signature: ptr::null(),
-        attachment: ptr::null_mut(),
+        signature: function_sig.as_ptr(),
+        attachment: user_data,
     }
 }
 
@@ -70,9 +86,11 @@ mod tests {
     };
     use std::env;
     use std::path::PathBuf;
+    use std::ptr::null_mut;
+    use wamr_sys::wasm_exec_env_t;
 
-    extern "C" fn extra() -> i32 {
-        100
+    extern "C" fn extra(_exec_env: *mut wasm_exec_env_t) -> i32 {
+        10
     }
 
     #[test]
@@ -80,7 +98,7 @@ mod tests {
     fn test_host_function() {
         let runtime = Runtime::builder()
             .use_system_allocator()
-            .register_host_function("extra", extra as *mut c_void)
+            .register_host_function("extra", extra as *mut c_void, "()i", null_mut())
             .build()
             .unwrap();
 
@@ -101,6 +119,6 @@ mod tests {
 
         let params: Vec<WasmValue> = vec![WasmValue::I32(8), WasmValue::I32(8)];
         let result = function.call(instance, &params);
-        assert_eq!(result.unwrap(), vec![WasmValue::I32(116)]);
+        assert_eq!(result.unwrap(), vec![WasmValue::I32(26)]);
     }
 }
