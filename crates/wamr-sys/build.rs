@@ -171,7 +171,7 @@ fn build_wamr_libraries(wamr_root: &PathBuf) {
     let dst = cfg.out_dir(&vmbuild_path).build();
 
     // Look for the built static lib, usually libvmlib.a
-    let lib_path = dst.join("build").join("libvmlib.a");
+    let lib_path = dst.join("build").join("libiwasm.a");
     if !lib_path.exists() {
         panic!(
             "Expected static lib not found: {}",
@@ -180,7 +180,7 @@ fn build_wamr_libraries(wamr_root: &PathBuf) {
     }
 
     println!("cargo:rustc-link-search=native={}/build", dst.display());
-    println!("cargo:rustc-link-lib=static=vmlib");
+    println!("cargo:rustc-link-lib=static=iwasm");
 }
 // 
 // fn build_wamr_libraries(wamr_root: &PathBuf) {

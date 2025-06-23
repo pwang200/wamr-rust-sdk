@@ -893,7 +893,7 @@ dependencies = [
 
 [[package]]
 name = "wamr-sys"
-version = "1.0.0"
+version = "2.3.1"
 dependencies = [
  "bindgen 0.72.0",
  "cc",
