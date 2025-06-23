@@ -162,19 +162,39 @@ fn setup_config(
 
     cfg
 }
-
 fn build_wamr_libraries(wamr_root: &PathBuf) {
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
     let vmbuild_path = out_dir.join("vmbuild");
 
     let feature_flags = get_feature_flags();
     let mut cfg = setup_config(wamr_root, feature_flags);
-    // let dst = cfg.out_dir(vmbuild_path).build_target("iwasm").build();
-    let dst = cfg.out_dir(vmbuild_path).build_target("vmlib").build();
+    let dst = cfg.out_dir(&vmbuild_path).build();
+
+    // Look for the built static lib, usually libvmlib.a
+    let lib_path = dst.join("build").join("libvmlib.a");
+    if !lib_path.exists() {
+        panic!(
+            "Expected static lib not found: {}",
+            lib_path.display()
+        );
+    }
 
     println!("cargo:rustc-link-search=native={}/build", dst.display());
-    println!("cargo:rustc-link-lib=static=iwasm");
+    println!("cargo:rustc-link-lib=static=vmlib");
 }
+// 
+// fn build_wamr_libraries(wamr_root: &PathBuf) {
+//     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
+//     let vmbuild_path = out_dir.join("vmbuild");
+// 
+//     let feature_flags = get_feature_flags();
+//     let mut cfg = setup_config(wamr_root, feature_flags);
+//     // let dst = cfg.out_dir(vmbuild_path).build_target("iwasm").build();
+//     let dst = cfg.out_dir(vmbuild_path).build_target("vmlib").build();
+// 
+//     println!("cargo:rustc-link-search=native={}/build", dst.display());
+//     println!("cargo:rustc-link-lib=static=vmlib");
+// }
 
 // fn build_wamrc(wamr_root: &Path) {
 //     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
