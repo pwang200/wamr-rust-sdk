@@ -11,14 +11,15 @@ use wamr_sys::{
     wasm_exec_env_t, wasm_func_get_param_count, wasm_func_get_result_count,
     wasm_func_get_result_types, wasm_function_inst_t, wasm_runtime_call_wasm,
     wasm_runtime_get_exception, wasm_runtime_get_exec_env_singleton,
-    wasm_runtime_get_wasi_exit_code, wasm_runtime_lookup_function,
+    wasm_runtime_get_instruction_count_limit, wasm_runtime_get_wasi_exit_code,
+    wasm_runtime_lookup_function, wasm_runtime_set_instruction_count_limit,
     wasm_valkind_enum_WASM_EXTERNREF, wasm_valkind_enum_WASM_F32, wasm_valkind_enum_WASM_F64,
     wasm_valkind_enum_WASM_FUNCREF, wasm_valkind_enum_WASM_I32, wasm_valkind_enum_WASM_I64,
     wasm_valkind_enum_WASM_V128,
 };
 
 use crate::{
-    ExecError, RuntimeError, helper::exception_to_string, instance::Instance, value::WasmValue,
+    helper::exception_to_string, instance::Instance, value::WasmValue, ExecError, RuntimeError,
 };
 
 pub struct Function<'instance> {
@@ -115,7 +116,8 @@ impl<'instance> Function<'instance> {
         &self,
         instance: &'instance Instance<'instance>,
         params: &Vec<WasmValue>,
-    ) -> Result<Vec<WasmValue>, RuntimeError> {
+        gas_cap: Option<u32>,
+    ) -> Result<(Vec<WasmValue>, u32), RuntimeError> {
         let param_count =
             unsafe { wasm_func_get_param_count(self.function, instance.get_inner_instance()) };
         if param_count > params.len() as u32 {
@@ -138,11 +140,18 @@ impl<'instance> Function<'instance> {
         argv.resize(capacity, 0);
 
         let call_result: bool;
+        let mut gas_used = 0;
         unsafe {
             let exec_env: wasm_exec_env_t =
                 wasm_runtime_get_exec_env_singleton(instance.get_inner_instance());
+            if let Some(cap) = gas_cap {
+                wasm_runtime_set_instruction_count_limit(exec_env, cap as i64);
+            }
             call_result =
                 wasm_runtime_call_wasm(exec_env, self.function, param_count, argv.as_mut_ptr());
+            if let Some(_) = gas_cap {
+                gas_used = wasm_runtime_get_instruction_count_limit(exec_env);
+            }
         };
 
         if !call_result {
@@ -158,6 +167,7 @@ impl<'instance> Function<'instance> {
 
         // there is no out of bounds problem, because we have precalculated the safe vec size
         self.parse_result(instance, argv)
+            .map(|r| (r, gas_used as u32))
     }
 }
 
@@ -219,10 +229,10 @@ mod tests {
         let function = function.unwrap();
 
         let params: Vec<WasmValue> = vec![WasmValue::I64(10), WasmValue::I32(20)];
-        let call_result = function.call(instance, &params);
+        let call_result = function.call(instance, &params, None);
         assert!(call_result.is_ok());
         assert_eq!(
-            call_result.unwrap(),
+            call_result.unwrap().0,
             vec![WasmValue::I32(52), WasmValue::I64(74)]
         );
 
@@ -235,10 +245,10 @@ mod tests {
         let function = function.unwrap();
 
         let params: Vec<WasmValue> = Vec::new();
-        let call_result = function.call(instance, &params);
+        let call_result = function.call(instance, &params, None);
         assert!(call_result.is_ok());
         assert_eq!(
-            call_result.unwrap(),
+            call_result.unwrap().0,
             vec![WasmValue::I32(1), WasmValue::I64(2), WasmValue::I32(3)]
         );
     }
@@ -268,12 +278,12 @@ mod tests {
         let function = function.unwrap();
 
         let params: Vec<WasmValue> = vec![WasmValue::I32(9), WasmValue::I32(27)];
-        let result = function.call(instance, &params);
-        assert_eq!(result.unwrap(), vec![WasmValue::I32(9)]);
+        let result = function.call(instance, &params, None);
+        assert_eq!(result.unwrap().0, vec![WasmValue::I32(9)]);
 
         let params: Vec<WasmValue> = vec![WasmValue::I32(0), WasmValue::I32(27)];
-        let result = function.call(instance, &params);
-        assert_eq!(result.unwrap(), vec![WasmValue::I32(27)]);
+        let result = function.call(instance, &params, None);
+        assert_eq!(result.unwrap().0, vec![WasmValue::I32(27)]);
     }
 
     #[test]
@@ -301,7 +311,7 @@ mod tests {
         assert!(function.is_ok());
         let function = function.unwrap();
 
-        let result = function.call(instance, &vec![]);
+        let result = function.call(instance, &vec![], None);
         assert!(result.is_ok());
         println!("{:?}", result.unwrap());
     }
@@ -399,12 +409,12 @@ mod tests {
         assert!(function.is_ok());
         let function = function.unwrap();
 
-        let wrapped_result = function.call(instance, &vec![]);
+        let wrapped_result = function.call(instance, &vec![], None);
         let unwrapped_result = wrapped_result.unwrap();
 
-        assert_eq!(unwrapped_result.len(), 12);
+        assert_eq!(unwrapped_result.0.len(), 12);
         assert_eq!(
-            unwrapped_result,
+            unwrapped_result.0,
             vec![
                 WasmValue::F64(22.2222),
                 WasmValue::F32(1.57),

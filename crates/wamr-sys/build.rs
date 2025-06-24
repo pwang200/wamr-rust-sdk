@@ -7,8 +7,8 @@ extern crate bindgen;
 extern crate cmake;
 
 use cmake::Config;
-use std::{env, path::Path, path::PathBuf};
 use std::process::Command;
+use std::{env, path::Path, path::PathBuf};
 
 const _LLVM_LIBRARIES: &[&str] = &[
     // keep alphabet order
@@ -173,25 +173,22 @@ fn build_wamr_libraries(wamr_root: &PathBuf) {
     // Look for the built static lib, usually libvmlib.a
     let lib_path = dst.join("build").join("libiwasm.a");
     if !lib_path.exists() {
-        panic!(
-            "Expected static lib not found: {}",
-            lib_path.display()
-        );
+        panic!("Expected static lib not found: {}", lib_path.display());
     }
 
     println!("cargo:rustc-link-search=native={}/build", dst.display());
     println!("cargo:rustc-link-lib=static=iwasm");
 }
-// 
+//
 // fn build_wamr_libraries(wamr_root: &PathBuf) {
 //     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
 //     let vmbuild_path = out_dir.join("vmbuild");
-// 
+//
 //     let feature_flags = get_feature_flags();
 //     let mut cfg = setup_config(wamr_root, feature_flags);
 //     // let dst = cfg.out_dir(vmbuild_path).build_target("iwasm").build();
 //     let dst = cfg.out_dir(vmbuild_path).build_target("vmlib").build();
-// 
+//
 //     println!("cargo:rustc-link-search=native={}/build", dst.display());
 //     println!("cargo:rustc-link-lib=static=vmlib");
 // }
@@ -250,7 +247,10 @@ fn main() {
         }
     }
 
-    assert!(wamr_root.exists(), "Submodule wasm-micro-runtime is missing");
+    assert!(
+        wamr_root.exists(),
+        "Submodule wasm-micro-runtime is missing"
+    );
 
     // let wamr_root = env::current_dir().unwrap();
     // let wamr_root = wamr_root.join("wasm-micro-runtime");

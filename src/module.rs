@@ -7,12 +7,12 @@
 //! get one via `Module::from_file()` or `Module::from_buf()`
 
 use crate::{
-    RuntimeError, helper::DEFAULT_ERROR_BUF_SIZE, helper::error_buf_to_string, runtime::Runtime,
-    wasi_context::WasiCtx,
+    helper::error_buf_to_string, helper::DEFAULT_ERROR_BUF_SIZE, runtime::Runtime,
+    wasi_context::WasiCtx, RuntimeError,
 };
 use core::marker::PhantomData;
 use std::{
-    ffi::{CString, c_char},
+    ffi::{c_char, CString},
     fs::File,
     io::Read,
     path::Path,

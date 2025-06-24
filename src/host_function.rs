@@ -4,7 +4,7 @@
  */
 
 /// This is a wrapper of a host defined(Rust) function.
-use std::ffi::{CString, c_void};
+use std::ffi::{c_void, CString};
 
 use wamr_sys::NativeSymbol;
 
@@ -38,6 +38,7 @@ impl HostFunctionList {
         function_name: &str,
         function_ptr: *mut c_void,
         func_sig: &str,
+        cost: u32,
         user_data: *mut c_void,
     ) {
         self.host_functions.push(HostFunction {
@@ -51,6 +52,7 @@ impl HostFunctionList {
             &(last.function_name),
             function_ptr,
             &(last.function_sig),
+            cost,
             user_data,
         ));
     }
@@ -68,6 +70,7 @@ pub fn pack_host_function(
     function_name: &CString,
     function_ptr: *mut c_void,
     function_sig: &CString,
+    gas: u32,
     user_data: *mut c_void,
 ) -> NativeSymbol {
     NativeSymbol {
@@ -75,7 +78,7 @@ pub fn pack_host_function(
         func_ptr: function_ptr,
         signature: function_sig.as_ptr(),
         attachment: user_data,
-        gas:0,
+        gas,
     }
 }
 
@@ -99,7 +102,7 @@ mod tests {
     fn test_host_function() {
         let runtime = Runtime::builder()
             .use_system_allocator()
-            .register_host_function("extra", extra as *mut c_void, "()i", null_mut())
+            .register_host_function("extra", extra as *mut c_void, "()i", 117, null_mut())
             .build()
             .unwrap();
 
@@ -119,7 +122,7 @@ mod tests {
         let function = function.unwrap();
 
         let params: Vec<WasmValue> = vec![WasmValue::I32(8), WasmValue::I32(8)];
-        let result = function.call(instance, &params);
+        let result = function.call(instance, &params, Some(1000));
         println!("result: {:?}", result);
         // assert_eq!(result.unwrap(), vec![WasmValue::I32(26)]);
     }

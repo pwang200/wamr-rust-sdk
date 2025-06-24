@@ -16,8 +16,8 @@ use wamr_sys::{
 };
 
 use crate::{
-    RuntimeError, helper::DEFAULT_ERROR_BUF_SIZE, helper::error_buf_to_string, module::Module,
-    runtime::Runtime,
+    helper::error_buf_to_string, helper::DEFAULT_ERROR_BUF_SIZE, module::Module, runtime::Runtime,
+    RuntimeError,
 };
 
 #[derive(Debug)]
@@ -111,7 +111,7 @@ mod tests {
     use super::*;
     use crate::runtime::Runtime;
     use wamr_sys::{
-        RunningMode_Mode_Interp, RunningMode_Mode_LLVM_JIT, wasm_runtime_get_running_mode,
+        wasm_runtime_get_running_mode, RunningMode_Mode_Interp, RunningMode_Mode_LLVM_JIT,
     };
 
     #[test]
